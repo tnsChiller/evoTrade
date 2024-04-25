@@ -5,6 +5,42 @@ import IndicatorsVectorized as ind
 from sqlalchemy import create_engine
 gc.enable()
 
+def GetGainsVect(hist, inds, pop):
+    c0, c1 = inds < pop[:, 0], pop[:, 1]
+    cLong = np.logical_and(np.all(c0, axis = 1), np.all(c1, axis = 1))
+    cPrev, cNow = cLong[:, :, :-1], cLong[:, :, 1:]
+    cBuy = np.logical_and(np.logical_not(cPrev), cNow)
+    cSell = np.logical_and(cPrev, np.logical_not(cNow))
+    
+    numSym, popSize = cSell.shape[1], pop.shape[0]
+    totGains = np.ones((pop.shape[0], numSym))
+    opens = np.ones((popSize, numSym))
+    handicap = 0.003
+    for t in range(cSell.shape[2]):
+        stack = np.stack([hist[:, t, 3] for _ in range(popSize)])
+        opens = cBuy[:, :, t] * stack + np.logical_not(cBuy[:, :, t]) * opens
+        gains = stack / opens * (1 - handicap)
+        totGains = cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t]) * np.ones((popSize, numSym))
+    return totGains
+
+def GetGains(hist, inds, thrs):
+    c0, c1 = inds < thrs[0], inds > thrs[1]
+    cLong = np.logical_and(np.all(c0, axis = 0), np.all(c1, axis = 0))
+    cPrev, cNow = cLong[:, :-1], cLong[:, 1:]
+    cBuy = np.logical_and(np.logical_not(cPrev), cNow)
+    cSell = np.logical_and(cPrev, np.logical_not(cNow))
+    
+    numSym = cSell.shape[0]
+    totGains = np.ones(numSym, np.float32)
+    opens = np.ones(numSym, np.float32)
+    handicap = 0.002
+    for i in range(cSell.shape[1]):
+        opens = cBuy[:, i] * hist[:, i, 3] + np.logical_not(cBuy[:, i]) * opens
+        gains = hist[:, i, 3] / opens * (1 - handicap)
+        totGains *= cSell[:, i] * gains + np.logical_not(cSell[:, i]) * np.ones(numSym, bool)
+    
+    return totGains
+
 def GetHist():
     engine = create_engine('postgresql+psycopg2://newuser:password@localhost:5432/postgres')
     
@@ -83,5 +119,6 @@ def GetRandomThresholdSet(inds):
 
 
 def StartPopulation(inds, size):
+    popList = [[GetRandomThresholdSet(inds) for i in range(2)] for k in range(size)]
     
-    return [[GetRandomThresholdSet(inds) for i in range(2)] for k in range(size)]
+    return np.array(popList)
