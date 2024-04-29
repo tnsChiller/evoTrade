@@ -70,7 +70,52 @@ def GetHist():
                 
     return hist
 
-def Get_Inds(hist):
+def GetMetrics(hist):
+    c0 = hist[:, :, 4] == 0
+    hist[:, :, 4] = c0 * np.ones(hist.shape[1]) + np.logical_not(c0) * hist[:, :, 4]
+    
+    base = {"close": hist[:, :, 3], "vol": hist[:, :, 4]}
+    inds = {}
+    ns = [6, 30, 120]
+    l = hist.shape[1] - max(ns)
+    for typ in ["close", "vol"]:
+        tmp0 = {}
+        for n in ns:
+            tmp1 = {}
+            tmp1["ma"], tmp1["std"] = ind.MovingAverageStd(base[typ], n)
+            tmp1["rsi"] = ind.Rsi(hist, n)
+            
+            start = tmp1["ma"].shape[1] - l
+            tmp1["ma"], tmp1["std"] = tmp1["ma"][:, start + 1:], tmp1["std"][:, start + 1:]
+            tmp1["rsi"] = tmp1["rsi"][:, start:]
+            
+            tmp1["bbhi"], tmp1["bblo"] = tmp1["ma"] + tmp1["std"], tmp1["ma"] - tmp1["std"]
+            tmp0[str(n)] = tmp1
+        tmp0["1"] = {"ma": base[typ][:, hist.shape[1] - l + 1:]}
+        inds[typ] = tmp0
+        
+    alpha = ((1, 6), (1, 30), (1, 120), (6, 30), (6, 120), (30, 120),
+             (6, 6), (30, 30), (120, 120))
+    beta = ((1, 6), (1, 30), (1, 120), (6, 30), (6, 120), (30, 120))
+    gamma = ((1, 6), (1, 30), (1, 120), (6, 30), (6, 120), (30, 120))
+    metrics = []
+    
+    for i in alpha:
+        metrics.append(inds["close"][str(i[1])]["bblo"] / inds["close"][str(i[0])]["ma"])
+        metrics.append(inds["close"][str(i[0])]["ma"] / inds["close"][str(i[1])]["bbhi"])
+        
+    for i in beta:
+        metrics.append(inds["close"][str(i[0])]["ma"] / inds["close"][str(i[1])]["ma"])
+        
+    for i in gamma:
+        metrics.append(inds["vol"][str(i[0])]["ma"] / inds["vol"][str(i[1])]["ma"])
+        
+    for i in ns:
+        metrics.append(inds["close"][str(i)]["rsi"])
+        
+    return np.array(metrics)
+
+def GetInds(hist):
     all_inds = []
     close = np.expand_dims(hist[:, -1, 3], axis = 1)
     vol5, _ = ind.MovingAverageStd(hist[:, :, 4], 5)
@@ -117,8 +162,12 @@ def GetRandomThresholdSet(inds):
     
     return thrs
 
-
 def StartPopulation(inds, size):
     popList = [[GetRandomThresholdSet(inds) for i in range(2)] for k in range(size)]
+    
+    return np.array(popList)
+
+def StartMetricPopulation(metrics, size):
+    popList = [np.random.rand(metrics.shape[0] + 2) - 0.5 * 2 for _ in range(size)]
     
     return np.array(popList)
