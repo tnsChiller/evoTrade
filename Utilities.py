@@ -5,6 +5,31 @@ import IndicatorsVectorized as ind
 from sqlalchemy import create_engine
 gc.enable()
 
+def GetGainsMetric(hist, metrics, pop):
+    popSize = pop.shape[0]
+    w, thr = pop[:, :metrics.shape[0]], pop[:, metrics.shape[0]:]
+    w = w.reshape((popSize, metrics.shape[0],1 ,1))
+    scr = (w * metrics).sum(axis = 1)
+    c0 = scr > thr[:, 0].reshape(thr.shape[0], 1, 1)
+    c1 = scr < thr[:, 1].reshape(thr.shape[0], 1, 1)
+    cBuy = np.logical_and(c0[:, :, 1:], np.logical_not(c0[:, :, :-1]))
+    cSell = np.logical_and(c0[:, :, 1:], np.logical_not(c0[:, :, :-1]))
+    
+    numSym = cSell.shape[1]
+    totGains = np.ones((pop.shape[0], numSym))
+    opens = np.ones((popSize, numSym))
+    handicap = 0.003
+    b, c = 50, 1
+    a = 1 / np.log(b + 1)
+    for t in range(cSell.shape[2]):
+        stack = np.stack([hist[:, t, 3] for _ in range(popSize)])
+        opens = cBuy[:, :, t] * stack + np.logical_not(cBuy[:, :, t]) * opens
+        gains = stack / opens * (1 - handicap)
+        gains = a * np.log(b * gains + c)
+        totGains = cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t]) * np.ones((popSize, numSym))
+    
+    return totGains
+
 def GetGainsVect(hist, inds, pop):
     c0, c1 = inds < pop[:, 0], pop[:, 1]
     cLong = np.logical_and(np.all(c0, axis = 1), np.all(c1, axis = 1))
