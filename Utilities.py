@@ -1,8 +1,8 @@
 import gc
-import pandas as pd
+import Aux
+import time
 import numpy as np
 import IndicatorsVectorized as ind
-from sqlalchemy import create_engine
 gc.enable()
 
 def GetGainsMetric(hist, metrics, pop):
@@ -65,35 +65,6 @@ def GetGains(hist, inds, thrs):
         totGains *= cSell[:, i] * gains + np.logical_not(cSell[:, i]) * np.ones(numSym, bool)
     
     return totGains
-
-def GetHist():
-    engine = create_engine('postgresql+psycopg2://newuser:password@localhost:5432/postgres')
-    
-    play_list = ['AAPL','MSFT','GOOG','AMZN','NVDA','TSLA','META','LLY',
-                 'V','XOM','UNH','WMT','JPM','MA','JNJ','PG','AVGO','ORCL','HD',
-                 'CVX','MRK','ABBV','ADBE','KO','COST','PEP','CSCO','BAC','CRM',
-                 'MCD','TMO','NFLX','PFE','CMCSA','DHR','ABT','AMD','TMUS','INTC',
-                 'INTU','WFC','TXN','NKE','DIS','COP','CAT','PM','MS','VZ','AMGN',
-                 'UPS','NEE','IBM','LOW','UNP','BA','BMY','SPGI','AMAT','HON',
-                 'NOW','GE','RTX','QCOM','AXP','DE','PLD','SYK','SBUX',
-                 'SCHW','GS','LMT','ELV','ISRG','TJX','BLK','T','ADP','UBER',
-                 'MMC','MDLZ','GILD','ABNB','REGN','LRCX','VRTX','ADI','ZTS',
-                 'SLB','CVS','AMT','CI','BX','PGR','BSX','MO','C','BDX']
-    
-    sql = 'SELECT * FROM df_m60;'
-    df = pd.read_sql(sql, con=engine)
-    hist = np.stack([pd.concat([df[f'{symbol}_Open'],
-                     df[f'{symbol}_High'],
-                     df[f'{symbol}_Low'],
-                     df[f'{symbol}_Close'],
-                     df[f'{symbol}_Volume']],axis=1).to_numpy(np.float32) for symbol in play_list])
-    
-    for i in range(hist.shape[0]):
-        for j in range(hist.shape[1]):
-            if np.any(np.isnan(hist[i, j])):
-                hist[i, j] = hist[i, j-1]
-                
-    return hist
 
 def GetMetrics(hist):
     c0 = hist[:, :, 4] == 0
@@ -190,9 +161,9 @@ def GetRandomThresholdSet(inds):
 def StartPopulation(inds, size):
     popList = [[GetRandomThresholdSet(inds) for i in range(2)] for k in range(size)]
     
-    return np.array(popList)
+    return np.array(popList, np.float32)
 
 def StartMetricPopulation(metrics, size):
     popList = [np.random.rand(metrics.shape[0] + 2) - 0.5 * 2 for _ in range(size)]
     
-    return np.array(popList)
+    return np.array(popList, np.float32)
