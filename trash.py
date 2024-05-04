@@ -7,14 +7,5 @@ import time
 
 hist = Aux.GetHist()
 metrics = util.GetMetrics(hist)
-
-
 popSize = 200
 pop = util.StartMetricPopulation(metrics, popSize)
-
-gens = 1000
-for gen in range(gens):
-    (cBuy, cSell) = util.GetConds(metrics, pop)
-    gains = util.GetGainsMetric(hist, cBuy, cSell, pop)
-    pop = util.NextGeneration(gains, pop)
-    print(f"Gen = {gen}, max scr = {round(gains.max(),4)}")
