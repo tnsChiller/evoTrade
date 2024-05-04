@@ -1,5 +1,4 @@
 import gc
-import Ext
 import time
 import pickle
 import datetime
