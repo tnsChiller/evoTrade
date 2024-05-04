@@ -5,16 +5,45 @@ import numpy as np
 import IndicatorsVectorized as ind
 gc.enable()
 
-def GetGainsMetric(hist, metrics, pop):
-    popSize = pop.shape[0]
+def NextGeneration(scr, pop):
+    popSize, metnum = pop.shape[0], pop.shape[1]
+    metricScr = np.concatenate((scr.reshape((len(scr),1)), pop), axis = 1)
+    metricScr = metricScr[metricScr[:, 0].argsort()]
+    elite = metricScr[-int(metricScr.shape[0] * 0.2):, 1:]
+    new = np.random.rand(int(popSize * 0.4), metnum)
+    
+    mutRatio, mutRange = 0.00, 2
+    child = np.zeros_like(new)
+    for i in range(child.shape[0]):
+        for j in range(child.shape[1]):
+            gene = elite[np.random.randint(0, elite.shape[0]), j]
+            if np.random.rand() < mutRatio:
+                gene *= np.random.rand() * mutRange
+            child[i, j] = gene
+    
+    return np.concatenate((elite, new, child))
+
+def GetConds(metrics, pop):
     w, thr = pop[:, :metrics.shape[0]], pop[:, metrics.shape[0]:]
-    w = w.reshape((popSize, metrics.shape[0],1 ,1))
-    scr = (w * metrics).sum(axis = 1)
+       
+    scr = np.matmul(w, metrics.swapaxes(0, 1)).swapaxes(0, 1)
     c0 = scr > thr[:, 0].reshape(thr.shape[0], 1, 1)
     c1 = scr < thr[:, 1].reshape(thr.shape[0], 1, 1)
     cBuy = np.logical_and(c0[:, :, 1:], np.logical_not(c0[:, :, :-1]))
-    cSell = np.logical_and(c0[:, :, 1:], np.logical_not(c0[:, :, :-1]))
+    cSell = np.logical_and(c1[:, :, 1:], np.logical_not(c1[:, :, :-1]))
     
+    buyLast = np.zeros((cBuy.shape[0], cBuy.shape[1]), bool)
+    for t in range(cSell.shape[2]):
+        cBuy[:, :, t] = np.logical_not(buyLast) * cBuy[:, :, t]
+        cSell[:, :, t] = buyLast * cSell[:, :, t]
+        
+        buyLast = cBuy[:, :, t] + np.logical_not(cBuy[:, :, t]) * buyLast
+        buyLast = np.logical_not(cSell[:, :, t]) * buyLast
+        
+    return (cBuy, cSell)
+
+def GetGainsMetric(hist, cBuy, cSell, pop):
+    popSize = pop.shape[0]
     numSym = cSell.shape[1]
     totGains = np.ones((pop.shape[0], numSym))
     opens = np.ones((popSize, numSym))
@@ -26,45 +55,45 @@ def GetGainsMetric(hist, metrics, pop):
         opens = cBuy[:, :, t] * stack + np.logical_not(cBuy[:, :, t]) * opens
         gains = stack / opens * (1 - handicap)
         gains = a * np.log(b * gains + c)
-        totGains = cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t]) * np.ones((popSize, numSym))
+        totGains *= cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t]) * np.ones((popSize, numSym))
     
-    return totGains
+    return totGains.prod(axis = 1)
 
-def GetGainsVect(hist, inds, pop):
-    c0, c1 = inds < pop[:, 0], pop[:, 1]
-    cLong = np.logical_and(np.all(c0, axis = 1), np.all(c1, axis = 1))
-    cPrev, cNow = cLong[:, :, :-1], cLong[:, :, 1:]
-    cBuy = np.logical_and(np.logical_not(cPrev), cNow)
-    cSell = np.logical_and(cPrev, np.logical_not(cNow))
+# def GetGains(hist, inds, pop):
+#     c0, c1 = inds < pop[:, 0], pop[:, 1]
+#     cLong = np.logical_and(np.all(c0, axis = 1), np.all(c1, axis = 1))
+#     cPrev, cNow = cLong[:, :, :-1], cLong[:, :, 1:]
+#     cBuy = np.logical_and(np.logical_not(cPrev), cNow)
+#     cSell = np.logical_and(cPrev, np.logical_not(cNow))
     
-    numSym, popSize = cSell.shape[1], pop.shape[0]
-    totGains = np.ones((pop.shape[0], numSym))
-    opens = np.ones((popSize, numSym))
-    handicap = 0.003
-    for t in range(cSell.shape[2]):
-        stack = np.stack([hist[:, t, 3] for _ in range(popSize)])
-        opens = cBuy[:, :, t] * stack + np.logical_not(cBuy[:, :, t]) * opens
-        gains = stack / opens * (1 - handicap)
-        totGains = cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t]) * np.ones((popSize, numSym))
-    return totGains
+#     numSym, popSize = cSell.shape[1], pop.shape[0]
+#     totGains = np.ones((pop.shape[0], numSym))
+#     opens = np.ones((popSize, numSym))
+#     handicap = 0.003
+#     for t in range(cSell.shape[2]):
+#         stack = np.stack([hist[:, t, 3] for _ in range(popSize)])
+#         opens = cBuy[:, :, t] * stack + np.logical_not(cBuy[:, :, t]) * opens
+#         gains = stack / opens * (1 - handicap)
+#         totGains = cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t]) * totGains
+#     return totGains
 
-def GetGains(hist, inds, thrs):
-    c0, c1 = inds < thrs[0], inds > thrs[1]
-    cLong = np.logical_and(np.all(c0, axis = 0), np.all(c1, axis = 0))
-    cPrev, cNow = cLong[:, :-1], cLong[:, 1:]
-    cBuy = np.logical_and(np.logical_not(cPrev), cNow)
-    cSell = np.logical_and(cPrev, np.logical_not(cNow))
+# def GetGains(hist, inds, thrs):
+#     c0, c1 = inds < thrs[0], inds > thrs[1]
+#     cLong = np.logical_and(np.all(c0, axis = 0), np.all(c1, axis = 0))
+#     cPrev, cNow = cLong[:, :-1], cLong[:, 1:]
+#     cBuy = np.logical_and(np.logical_not(cPrev), cNow)
+#     cSell = np.logical_and(cPrev, np.logical_not(cNow))
     
-    numSym = cSell.shape[0]
-    totGains = np.ones(numSym, np.float32)
-    opens = np.ones(numSym, np.float32)
-    handicap = 0.002
-    for i in range(cSell.shape[1]):
-        opens = cBuy[:, i] * hist[:, i, 3] + np.logical_not(cBuy[:, i]) * opens
-        gains = hist[:, i, 3] / opens * (1 - handicap)
-        totGains *= cSell[:, i] * gains + np.logical_not(cSell[:, i]) * np.ones(numSym, bool)
+#     numSym = cSell.shape[0]
+#     totGains = np.ones(numSym, np.float32)
+#     opens = np.ones(numSym, np.float32)
+#     handicap = 0.002
+#     for i in range(cSell.shape[1]):
+#         opens = cBuy[:, i] * hist[:, i, 3] + np.logical_not(cBuy[:, i]) * opens
+#         gains = hist[:, i, 3] / opens * (1 - handicap)
+#         totGains *= cSell[:, i] * gains + np.logical_not(cSell[:, i]) * np.ones(numSym, bool)
     
-    return totGains
+#     return totGains
 
 def GetMetrics(hist):
     c0 = hist[:, :, 4] == 0
@@ -164,6 +193,6 @@ def StartPopulation(inds, size):
     return np.array(popList, np.float32)
 
 def StartMetricPopulation(metrics, size):
-    popList = [np.random.rand(metrics.shape[0] + 2) - 0.5 * 2 for _ in range(size)]
+    popList = [(np.random.rand(metrics.shape[0] + 2) - 0.5) * 2 for _ in range(size)]
     
     return np.array(popList, np.float32)
