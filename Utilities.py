@@ -2,6 +2,7 @@ import gc
 import Aux
 import time
 import pickle
+import datetime
 import numpy as np
 import IndicatorsVectorized as ind
 gc.enable()
@@ -18,7 +19,7 @@ def EvolvePopulation(hist, gens, pop):
     gains = GetGainsMetric(hist, cBuy, cSell, pop)
     print(f"Gen = {gen + 1}, max scr = {round(gains.max(),4)}")
     
-    return pop
+    return (pop, gains)
 
 def NextGeneration(scr, pop):
     popSize, metnum = pop.shape[0], pop.shape[1]
@@ -137,11 +138,14 @@ def StartMetricPopulation(metrics, size):
     
     return np.array(popList, np.float32)
 
-def SaveParameterSet(pSet, name):
+def SaveParameterSet(pSet, unid):
     with open("pSets.pickle", "rb") as f:
         pSets = pickle.load(f)
     
-    pSets[name] = pSet
+    pSetEntry = {"status": "new",
+                 "pSet": pSet,
+                 "date": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S")}
+    pSets[unid] = pSetEntry
     with open("pSets.pickle", "wb") as f:
         pickle.dump(pSets, f, pickle.HIGHEST_PROTOCOL)
         
