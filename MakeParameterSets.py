@@ -1,9 +1,9 @@
 import numpy as np
 import Utilities as util
 import uuid
-import Aux
+import Ext
 
-hist = Aux.GetHist()
+hist = Ext.GetHist()
 metrics = util.GetMetrics(hist)
 popSize, gens = 200, 10
 pop = util.StartMetricPopulation(metrics, popSize)
