@@ -5,6 +5,19 @@ import numpy as np
 import IndicatorsVectorized as ind
 gc.enable()
 
+def GetFastestPopSize(hist):
+    gc.enable()
+    metrics = GetMetrics(hist)
+    popSizes = np.arange(200, 5001, 200)
+    for popSize in popSizes:
+        t0 = time.perf_counter()
+        pop = StartMetricPopulation(metrics, popSize)
+        (cBuy, cSell) = GetConds(metrics, pop)
+        gains = GetGainsMetric(hist, cBuy, cSell, pop)
+        pop = NextGeneration(gains, pop)
+        t1 = time.perf_counter()
+        print(f"popSize = {popSize}, t / popSize = {np.round((t1 - t0) / popSize, 3)}")
+
 def NextGeneration(scr, pop):
     popSize, metnum = pop.shape[0], pop.shape[1]
     metricScr = np.concatenate((scr.reshape((len(scr),1)), pop), axis = 1)
@@ -12,7 +25,7 @@ def NextGeneration(scr, pop):
     elite = metricScr[-int(metricScr.shape[0] * 0.2):, 1:]
     new = np.random.rand(int(popSize * 0.4), metnum)
     
-    mutRatio, mutRange = 0.00, 2
+    mutRatio, mutRange = 0.05, 2
     child = np.zeros_like(new)
     for i in range(child.shape[0]):
         for j in range(child.shape[1]):

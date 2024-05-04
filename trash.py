@@ -7,10 +7,12 @@ import time
 
 hist = Aux.GetHist()
 metrics = util.GetMetrics(hist)
-popSize = 1000
+
+
+popSize = 200
 pop = util.StartMetricPopulation(metrics, popSize)
 
-gens = 60
+gens = 1000
 for gen in range(gens):
     (cBuy, cSell) = util.GetConds(metrics, pop)
     gains = util.GetGainsMetric(hist, cBuy, cSell, pop)
