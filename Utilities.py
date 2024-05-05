@@ -137,11 +137,12 @@ def StartMetricPopulation(metrics, size):
     
     return np.array(popList, np.float32)
 
-def SaveParameterSet(pSet, scr, unid):
+def SaveParameterSet(pSet, scr, name, unid):
     with open("pSets.pickle", "rb") as f:
         pSets = pickle.load(f)
     
-    pSetEntry = {"status": "new",
+    pSetEntry = {"name": name,
+                 "status": "new",
                  "pSet": pSet,
                  "scr": scr,
                  "date": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S")}
