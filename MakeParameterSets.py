@@ -17,11 +17,10 @@ pop = util.StartMetricPopulation(metrics, popSize)
 res = np.concatenate((gainsV.reshape(popSize, 1),
                       gains.reshape(popSize, 1),
                       pop), axis = 1)
-res = res[-res[:, 0].argsort()]
+res = res[res[:, 0].argsort()]
 
 selection = []
-for i in range(5):
-    idx = int(popSize * 0.2) - 1 - i
-    if gains[idx] > 2 * gainsV[idx]:
-        selection.append([gainsV[idx], gains[idx], pop[idx]])
-        util.SaveParameterSet(pop[idx], "-", gains[idx], gainsV[idx])
+for idx in range(popSize - 20, popSize):
+    if res[idx, 1] > 2 and res[idx, 0] > 2:
+        selection.append([res[idx, 1], res[idx, 0], res[idx, 2:]])
+        util.SaveParameterSet(res[idx, 2:], "-", res[idx, 1], res[idx, 0])

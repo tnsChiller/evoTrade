@@ -29,7 +29,7 @@ def EvolvePopulation(hist, gens, pop):
         gains = GetGainsMetric(hist, cBuy, cSell)
         if gen != gens:
             pop = NextGeneration(gains, pop)
-        print(f"Gen = {gen}, max scr = {round(gains.max(),4)}")
+        print(f"Gen = {gen}, mean scr = {round(gains[:int(pop.shape[0] * 0.4)].mean(),4)}")
     
     return (pop, gains)
 
@@ -40,7 +40,7 @@ def NextGeneration(scr, pop):
     elite = metricScr[-int(metricScr.shape[0] * 0.2):, 1:]
     new = np.random.rand(int(popSize * 0.4), metnum)
     
-    mutRatio, mutRange = 0.05, 2
+    mutRatio, mutRange = 0.00, 2
     child = np.zeros_like(new)
     for i in range(child.shape[0]):
         for j in range(child.shape[1]):
