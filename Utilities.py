@@ -1,22 +1,35 @@
 import gc
 import time
+import uuid
 import pickle
 import datetime
 import numpy as np
 import IndicatorsVectorized as ind
 gc.enable()
 
+def EvolveInPieces(hist, gens, pop, pieceSize):
+    metrics = GetMetrics(hist)
+    popSize = pop.shape[0]
+    for gen in range(gens + 1):
+        gains = np.ones(popSize)
+        for piece in range(popSize // pieceSize):
+            subPop = pop[piece * pieceSize:(piece + 1) * pieceSize]
+            (subCBuy, subCSell) = GetConds(metrics, subPop)
+            subGains = GetGainsMetric(hist, subCBuy, subCSell)
+            gains[piece * pieceSize:(piece + 1) * pieceSize] = subGains
+        
+        if gen != gens:
+            pop = NextGeneration(gains, pop)
+        print(f"Gen = {gen}, max scr = {round(gains.max(),4)}")
+
 def EvolvePopulation(hist, gens, pop):
     metrics = GetMetrics(hist)
-    for gen in range(gens - 1):
+    for gen in range(gens + 1):
         (cBuy, cSell) = GetConds(metrics, pop)
-        gains = GetGainsMetric(hist, cBuy, cSell, pop)
-        pop = NextGeneration(gains, pop)
+        gains = GetGainsMetric(hist, cBuy, cSell)
+        if gen != gens:
+            pop = NextGeneration(gains, pop)
         print(f"Gen = {gen}, max scr = {round(gains.max(),4)}")
-        
-    (cBuy, cSell) = GetConds(metrics, pop)
-    gains = GetGainsMetric(hist, cBuy, cSell, pop)
-    print(f"Gen = {gen + 1}, max scr = {round(gains.max(),4)}")
     
     return (pop, gains)
 
@@ -46,7 +59,7 @@ def GetFastestPopSize(hist):
         t0 = time.perf_counter()
         pop = StartMetricPopulation(metrics, popSize)
         (cBuy, cSell) = GetConds(metrics, pop)
-        gains = GetGainsMetric(hist, cBuy, cSell, pop)
+        gains = GetGainsMetric(hist, cBuy, cSell)
         pop = NextGeneration(gains, pop)
         t1 = time.perf_counter()
         print(f"popSize = {popSize}, t / popSize = {np.round((t1 - t0) / popSize, 3)}")
@@ -70,10 +83,10 @@ def GetConds(metrics, pop):
         
     return (cBuy, cSell)
 
-def GetGainsMetric(hist, cBuy, cSell, pop):
-    popSize = pop.shape[0]
+def GetGainsMetric(hist, cBuy, cSell):
+    popSize = cBuy.shape[0]
     numSym = cSell.shape[1]
-    totGains = np.ones((pop.shape[0], numSym))
+    totGains = np.ones((popSize, numSym))
     opens = np.ones((popSize, numSym))
     handicap = 0.003
     b, c = 50, 1
@@ -137,16 +150,17 @@ def StartMetricPopulation(metrics, size):
     
     return np.array(popList, np.float32)
 
-def SaveParameterSet(pSet, scr, name, unid):
+def SaveParameterSet(pSet, name, scr, scrV):
     with open("pSets.pickle", "rb") as f:
         pSets = pickle.load(f)
     
     pSetEntry = {"name": name,
+                 "scr": scr,
+                 "scrV": scrV,
                  "status": "new",
                  "pSet": pSet,
-                 "scr": scr,
                  "date": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S")}
-    pSets[unid] = pSetEntry
+    pSets[str(uuid.uuid4())] = pSetEntry
     with open("pSets.pickle", "wb") as f:
         pickle.dump(pSets, f, pickle.HIGHEST_PROTOCOL)
         
