@@ -20,7 +20,7 @@ def EvolveInPieces(hist, gens, pop, pieceSize):
         
         if gen != gens:
             pop = NextGeneration(gains, pop)
-        print(f"Gen = {gen}, max scr = {round(gains.max(),4)}")
+        print(f"Gen = {gen}, mean scr = {round(gains[:int(pop.shape[0] * 0.4)].mean(),4)}")
 
 def EvolvePopulation(hist, gens, pop):
     metrics = GetMetrics(hist)

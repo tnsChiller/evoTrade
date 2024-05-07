@@ -7,11 +7,10 @@ vSplit = 0.2
 hist = hist0[:, :int(hist0.shape[1] * (1 - vSplit)), :]
 histV = hist0[:, int(hist0.shape[1] * (1 - vSplit)):, :]
 metrics = util.GetMetrics(hist)
-# popSize, pieceSize, gens = 5000, 200, 20
-popSize,  gens = 800, 150
+popSize, pieceSize, gens = 5000, 200, 100
+# popSize,  gens = 800, 150
 pop = util.StartMetricPopulation(metrics, popSize)
 (pop, gains) = util.EvolvePopulation(hist, gens, pop)
-
 (pop, gainsV) = util.EvolvePopulation(histV, 0, pop)
 
 res = np.concatenate((gainsV.reshape(popSize, 1),
