@@ -151,13 +151,28 @@ def StartMetricPopulation(metrics, size):
     return np.array(popList, np.float32)
 
 def SaveParameterSet(pSet, name, scr, scrV):
+    playList = ['AAPL','MSFT','GOOG','AMZN','NVDA','TSLA','META','LLY',
+                 'V','XOM','UNH','WMT','JPM','MA','JNJ','PG','AVGO','ORCL','HD',
+                 'CVX','MRK','ABBV','ADBE','KO','COST','PEP','CSCO','BAC','CRM',
+                 'MCD','TMO','NFLX','PFE','CMCSA','DHR','ABT','AMD','TMUS','INTC',
+                 'INTU','WFC','TXN','NKE','DIS','COP','CAT','PM','MS','VZ','AMGN',
+                 'UPS','NEE','IBM','LOW','UNP','BA','BMY','SPGI','AMAT','HON',
+                 'NOW','GE','RTX','QCOM','AXP','DE','PLD','SYK','SBUX',
+                 'SCHW','GS','LMT','ELV','ISRG','TJX','BLK','T','ADP','UBER',
+                 'MMC','MDLZ','GILD','ABNB','REGN','LRCX','VRTX','ADI','ZTS',
+                 'SLB','CVS','AMT','CI','BX','PGR','BSX','MO','C','BDX']
+    status = {}
+    for sym in playList:
+        status[sym] = False
     with open("pSets.pickle", "rb") as f:
         pSets = pickle.load(f)
     
     pSetEntry = {"name": name,
                  "scr": scr,
                  "scrV": scrV,
-                 "status": "new",
+                 "status": status,
+                 "active": True,
+                 "type": "evo_mkI",
                  "pSet": pSet,
                  "date": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S")}
     pSets[str(uuid.uuid4())] = pSetEntry
