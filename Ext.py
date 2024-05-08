@@ -11,7 +11,7 @@ def ReportTime(times):
 def GetHist():
     engine = create_engine('postgresql+psycopg2://newuser:password@localhost:5432/postgres')
     
-    play_list = ['AAPL','MSFT','GOOG','AMZN','NVDA','TSLA','META','LLY',
+    playList = ['AAPL','MSFT','GOOG','AMZN','NVDA','TSLA','META','LLY',
                  'V','XOM','UNH','WMT','JPM','MA','JNJ','PG','AVGO','ORCL','HD',
                  'CVX','MRK','ABBV','ADBE','KO','COST','PEP','CSCO','BAC','CRM',
                  'MCD','TMO','NFLX','PFE','CMCSA','DHR','ABT','AMD','TMUS','INTC',
@@ -28,7 +28,7 @@ def GetHist():
                      df[f'{symbol}_High'],
                      df[f'{symbol}_Low'],
                      df[f'{symbol}_Close'],
-                     df[f'{symbol}_Volume']],axis=1).to_numpy(np.float32) for symbol in play_list])
+                     df[f'{symbol}_Volume']],axis=1).to_numpy(np.float32) for symbol in playList])
     
     for i in range(hist.shape[0]):
         for j in range(hist.shape[1]):
