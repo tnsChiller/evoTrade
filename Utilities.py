@@ -146,7 +146,7 @@ def GetMetrics(hist):
     return np.array(metrics)
 
 def StartMetricPopulation(metrics, size):
-    popList = [(np.random.rand(metrics.shape[0] + 2) - 0.5) * 2 for _ in range(size)]
+    popList = [(np.random.rand(metrics.shape[0] + 2) - 0.5) * 4 for _ in range(size)]
     
     return np.array(popList, np.float32)
 
