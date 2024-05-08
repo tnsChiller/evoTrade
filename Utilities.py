@@ -173,3 +173,9 @@ def LoadParameterSets():
 def SaveFile(obj, name):
     with open(f"{name}.pickle", "wb") as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+def LoadFile(name):
+    with open(f"{name}.pickle", "rb") as f:
+        obj = pickle.load(f)
+        
+    return obj

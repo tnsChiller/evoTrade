@@ -10,14 +10,19 @@ cumOrders = {}
 for sym in keys:
     cumOrders[sym] = 0
 
+(eqt, pos) = GetAccountInfo()
 for order in orderList:
-    if oder["side"] == "buy":
-        cumOrders[order["sym"]] += qty
+    if order["side"] == "buy":
+        cumOrders[order["sym"]] += order["qty"]
     else:
-        cumOrders[order["sym"]] -= qty
+        available = 0
+        for p in pos:
+            if p.symbol == pos["sym"]:
+                available = float(p.qty)
+            
+        cumOrders[order["sym"]] -= order["qty"]
         
 
-(eqt, pos) = GetAccountInfo
 for sym in cumOrders:
     if abs(cumOrders[sym] > 0.01):
         if cumOrders[sym] < 0:
