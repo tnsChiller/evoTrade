@@ -16,5 +16,6 @@ while True:
                 
         else:
             go = True
-            
+    
+    # util.RunSummary()
     util.WaitCycle()
