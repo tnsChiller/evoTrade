@@ -5,7 +5,84 @@ import pickle
 import datetime
 import numpy as np
 import IndicatorsVectorized as ind
+from Constants import playList, cfg
 gc.enable()
+
+def RunSummary():
+    models = {}
+    orderBigList = LoadFile("orderBigList")
+    for order in orderBigList:
+        models[order["model"]] = 1
+
+def WaitCycle():
+    time.sleep(cfg["step"])
+
+def GetGoTime(mnt, sec):
+    minute = datetime.now().minute
+    second = datetime.now().second
+    c0 = minute == mnt
+    c1 = second > sec
+    
+    return c0 and c1
+
+def GetLiveMetrics(yfd):
+    keys = list(yfd['Close'].keys())
+    hist = np.stack((yfd['Open'], yfd['High'], yfd['Low'], yfd['Close'], yfd['Volume'])).T
+    hist = hist[:, :hist.shape[1] - 1]
+    for i in range(hist.shape[0]):
+        for j in range(hist.shape[1]):
+            if np.any(np.isnan(hist[i, j])):
+                hist[i, j] = hist[i, j-1]
+                
+    return (GetMetrics(hist), keys)
+
+def GetMoves(pSets, metrics, keys):
+    moves = {}
+    for pSet in pSets:
+        if pSet["active"]:
+            pop = np.array([pSets[pSet]["pSet"]])
+            (cBuy, cSell) = GetConds(metrics, pop)
+            moves[pSet] = {}
+            for i in range(len(keys)):
+                if cBuy[0, i, -1] or cSell[0, i, -1]:
+                    print(pSet)
+                    print(keys[i])
+                moves[pSet][keys[i]] = {"buy": cBuy[0, i, -1], "sell": cSell[0, i, -1]}
+    
+    return moves
+    
+def CreateOrderList(moves, yfd):
+    orderBigList = LoadFile("orderBigList")
+    orderList = []
+    for model in moves:
+        for sym in moves[model]:
+            if moves[model][sym]["buy"] and not moves[model]["status"]:
+                order = {"model": model,
+                         "sym": sym,
+                         "side": "buy",
+                         "qty": cfg["orderSize"] / yfd['Close'][sym][-1],
+                         "price": yfd['Close'][sym][-1],
+                         "time": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S"),
+                         "unid": uuid.uuid4()}
+                orderList.append(order)
+                moves[model]["status"] = True
+                orderBigList[order["unid"]] = order
+                
+            if moves[model][sym]["sell"] and moves[model]["status"]:
+                order = {"model": model,
+                         "sym": sym,
+                         "side": "sell",
+                         "qty": cfg["orderSize"] / yfd['Close'][sym][-1],
+                         "price": yfd['Close'][sym][-1],
+                         "time": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S"),
+                         "unid": uuid.uuid4()}
+                orderList.append(order)
+                moves[model]["status"] = False
+                orderBigList[order["unid"]] = order
+                
+    SaveFile("orderBigList")
+                
+    return orderList
 
 def EvolveInPieces(hist, gens, pop, pieceSize):
     metrics = GetMetrics(hist)
@@ -151,16 +228,6 @@ def StartMetricPopulation(metrics, size):
     return np.array(popList, np.float32)
 
 def SaveParameterSet(pSet, name, scr, scrV):
-    playList = ['AAPL','MSFT','GOOG','AMZN','NVDA','TSLA','META','LLY',
-                 'V','XOM','UNH','WMT','JPM','MA','JNJ','PG','AVGO','ORCL','HD',
-                 'CVX','MRK','ABBV','ADBE','KO','COST','PEP','CSCO','BAC','CRM',
-                 'MCD','TMO','NFLX','PFE','CMCSA','DHR','ABT','AMD','TMUS','INTC',
-                 'INTU','WFC','TXN','NKE','DIS','COP','CAT','PM','MS','VZ','AMGN',
-                 'UPS','NEE','IBM','LOW','UNP','BA','BMY','SPGI','AMAT','HON',
-                 'NOW','GE','RTX','QCOM','AXP','DE','PLD','SYK','SBUX',
-                 'SCHW','GS','LMT','ELV','ISRG','TJX','BLK','T','ADP','UBER',
-                 'MMC','MDLZ','GILD','ABNB','REGN','LRCX','VRTX','ADI','ZTS',
-                 'SLB','CVS','AMT','CI','BX','PGR','BSX','MO','C','BDX']
     status = {}
     for sym in playList:
         status[sym] = False
