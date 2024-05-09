@@ -10,5 +10,5 @@ playList = ['AAPL','MSFT','GOOG','AMZN','NVDA','TSLA','META','LLY',
              'SLB','CVS','AMT','CI','BX','PGR','BSX','MO','C','BDX']
 
 cfg = {"orderSize": 1000,
-       "step" = 5
+       "step": 5
        }
