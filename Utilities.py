@@ -18,10 +18,10 @@ def WaitCycle():
     time.sleep(cfg["step"])
 
 def GetGoTime(mnt, sec):
-    minute = datetime.now().minute
-    second = datetime.now().second
-    c0 = minute == mnt
-    c1 = second > sec
+    minute = datetime.datetime.now().minute
+    second = datetime.datetime.now().second
+    c0 = minute >= mnt
+    c1 = second >= sec
     
     return c0 and c1
 
@@ -39,7 +39,7 @@ def GetLiveMetrics(yfd):
 def GetMoves(pSets, metrics, keys):
     moves = {}
     for pSet in pSets:
-        if pSet["active"]:
+        if pSets[pSet]["active"]:
             pop = np.array([pSets[pSet]["pSet"]])
             (cBuy, cSell) = GetConds(metrics, pop)
             moves[pSet] = {}
@@ -51,36 +51,36 @@ def GetMoves(pSets, metrics, keys):
     
     return moves
     
-def CreateOrderList(moves, yfd):
+def CreateOrderList(moves, yfd, pSets):
     orderBigList = LoadFile("orderBigList")
     orderList = []
     for model in moves:
         for sym in moves[model]:
-            if moves[model][sym]["buy"] and not moves[model]["status"]:
+            if moves[model][sym]["buy"] and not pSets[model]["status"][sym]:
                 order = {"model": model,
                          "sym": sym,
                          "side": "buy",
-                         "qty": cfg["orderSize"] / yfd['Close'][sym][-1],
+                         "qty": round(cfg["orderSize"] / yfd['Close'][sym][-1], 2),
                          "price": yfd['Close'][sym][-1],
                          "time": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S"),
                          "unid": uuid.uuid4()}
                 orderList.append(order)
-                moves[model]["status"] = True
+                pSets[model]["status"][sym] = True
                 orderBigList[order["unid"]] = order
                 
-            if moves[model][sym]["sell"] and moves[model]["status"]:
+            if moves[model][sym]["sell"] and pSets[model]["status"][sym]:
                 order = {"model": model,
                          "sym": sym,
                          "side": "sell",
-                         "qty": cfg["orderSize"] / yfd['Close'][sym][-1],
+                         "qty": round(cfg["orderSize"] / yfd['Close'][sym][-1], 2),
                          "price": yfd['Close'][sym][-1],
                          "time": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S"),
                          "unid": uuid.uuid4()}
                 orderList.append(order)
-                moves[model]["status"] = False
+                pSets[model]["status"][sym] = False
                 orderBigList[order["unid"]] = order
                 
-    SaveFile("orderBigList")
+    SaveFile(orderBigList, "orderBigList")
                 
     return orderList
 

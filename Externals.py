@@ -48,6 +48,10 @@ def ExecuteOrders(orderList, keys):
                 order = client.submit_order(order_data = order)
                 print(order)
                 
-    def GetClock():
-        
-        return client.get_clock()
+def GetClock():
+    
+    return client.get_clock()
+
+def GetTime():
+    
+    return datetime.datetime.now()
