@@ -1,8 +1,8 @@
 import Externals as extt
 import Utilities as util
-import datetime
 pSets = util.LoadFile("pSets")
 
+print("\nStarting ...")
 go = True
 while True:
     clock = extt.GetClock()
@@ -25,5 +25,7 @@ while True:
         print(f"Time: {extt.GetTime()}")
     
     # util.RunSummary()
-    for cycle in range(5):
+    extt.RunPositionSummary()
+    for cycle in range(12):
         util.WaitCycle()
+        

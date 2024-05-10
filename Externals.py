@@ -10,6 +10,16 @@ key = 'PKKQMCMWMEYQ9S7VEBPN'
 secret = 'xRhpoy3649uxkfhuSMTNbd4SHntRgPCaogd1izCa'
 client = TradingClient(key, secret, paper=True)
 
+def RunPositionSummary():
+    (eqt, pos) = GetAccountInfo()
+    print("==============================")
+    print(f"Equity: {eqt}")
+    print("Positions:\n")
+    for p in pos:
+        print(f"{p.symbol}: {round(float(p.market_value), 2)}")
+    print("==============================")
+    
+
 def GetYFD():
     yfd = yf.download(playList, period ='30d', interval = '1h')
     
