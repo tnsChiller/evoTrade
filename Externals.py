@@ -13,10 +13,10 @@ client = TradingClient(key, secret, paper=True)
 def RunPositionSummary():
     (eqt, pos) = GetAccountInfo()
     print("==============================")
-    print(f"Equity: {eqt}")
+    print(f"Equity: ${round(float(eqt), 2)}")
     print("Positions:")
     for p in pos:
-        print(f"{p.symbol}: $ {round(float(p.market_value), 2)}")
+        print(f"{p.symbol}: ${round(float(p.market_value), 2)}")
     print("==============================")
     
 
