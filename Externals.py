@@ -14,9 +14,9 @@ def RunPositionSummary():
     (eqt, pos) = GetAccountInfo()
     print("==============================")
     print(f"Equity: {eqt}")
-    print("Positions:\n")
+    print("Positions:")
     for p in pos:
-        print(f"{p.symbol}: {round(float(p.market_value), 2)}")
+        print(f"{p.symbol}: $ {round(float(p.market_value), 2)}")
     print("==============================")
     
 
