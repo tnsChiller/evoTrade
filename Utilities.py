@@ -26,7 +26,6 @@ def GetGoTime(mnt, sec):
     return c0 and c1
 
 def GetLiveMetrics(yfd):
-    keys = list(yfd['Close'].keys())
     hist = np.stack((yfd['Open'], yfd['High'], yfd['Low'], yfd['Close'], yfd['Volume'])).T
     hist = hist[:, :hist.shape[1] - 1]
     for i in range(hist.shape[0]):
@@ -34,23 +33,62 @@ def GetLiveMetrics(yfd):
             if np.any(np.isnan(hist[i, j])):
                 hist[i, j] = hist[i, j-1]
                 
-    return (GetMetrics(hist), keys)
+    return GetMetrics(hist)
 
-def GetMoves(pSets, metrics, keys):
+def GetMoves(pSets, metrics, verbose = True):
     moves = {}
     for pSet in pSets:
         if pSets[pSet]["active"]:
             pop = np.array([pSets[pSet]["pSet"]])
             (cBuy, cSell) = GetConds(metrics, pop)
             moves[pSet] = {}
-            for i in range(len(keys)):
-                if cBuy[0, i, -1] or cSell[0, i, -1]:
+            for i in range(len(playList)):
+                if (cBuy[0, i, -1] or cSell[0, i, -1]) and verbose:
                     print(pSet)
-                    print(keys[i])
-                moves[pSet][keys[i]] = {"buy": cBuy[0, i, -1], "sell": cSell[0, i, -1]}
+                    print(playList[i])
+                moves[pSet][playList[i]] = {"buy": cBuy[0, i, -1], "sell": cSell[0, i, -1]}
     
     return moves
+
+def ResetPSets(save = False):
+    pSets = LoadFile("pSets")
+    for pSet in pSets:
+        for sym in pSets[pSet]["status"]:
+            pSets[pSet]["status"][sym] = False
+    if save:
+        SaveFile(pSets, "pSets")
+    return pSets
     
+def CreateOrderListMatrix(moves, subHist, pSets, time):
+    orderList = []
+    for model in moves:
+        for sym in moves[model]:
+            price = subHist[playList.index(sym), -1 , 3]
+            if moves[model][sym]["buy"] and not pSets[model]["status"][sym]:
+                order = {"model": model,
+                         "sym": sym,
+                         "side": "buy",
+                         "qty": round(cfg["orderSize"] / price, 2),
+                         "price": price,
+                         "time": time,
+                         "unid": uuid.uuid4()}
+                orderList.append(order)
+                pSets[model]["status"][sym] = True
+                
+            if moves[model][sym]["sell"] and pSets[model]["status"][sym]:
+                order = {"model": model,
+                         "sym": sym,
+                         "side": "sell",
+                         "qty": round(cfg["orderSize"] / price, 2),
+                         "price": price,
+                         "time": time,
+                         "unid": uuid.uuid4()}
+                orderList.append(order)
+                pSets[model]["status"][sym] = False
+                
+    return orderList
+    
+
 def CreateOrderList(moves, yfd, pSets):
     orderBigList = LoadFile("orderBigList")
     orderList = []
@@ -61,8 +99,8 @@ def CreateOrderList(moves, yfd, pSets):
                          "sym": sym,
                          "side": "buy",
                          "qty": round(cfg["orderSize"] / yfd['Close'][sym][-1], 2),
-                         "price": yfd['Close'][sym][-1],
-                         "time": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S"),
+                         "price": yfd['Close'][sym][-2],
+                         "time": yfd.index[-1],
                          "unid": uuid.uuid4()}
                 orderList.append(order)
                 pSets[model]["status"][sym] = True
@@ -73,14 +111,15 @@ def CreateOrderList(moves, yfd, pSets):
                          "sym": sym,
                          "side": "sell",
                          "qty": round(cfg["orderSize"] / yfd['Close'][sym][-1], 2),
-                         "price": yfd['Close'][sym][-1],
-                         "time": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S"),
+                         "price": yfd['Close'][sym][-2],
+                         "time": yfd.index[-1],
                          "unid": uuid.uuid4()}
                 orderList.append(order)
                 pSets[model]["status"][sym] = False
                 orderBigList[order["unid"]] = order
                 
-    SaveFile(orderBigList, "orderBigList")
+        SaveFile(orderBigList, "orderBigList")
+        SaveFile(pSets, "pSets")
                 
     return orderList
 
@@ -117,7 +156,7 @@ def NextGeneration(scr, pop):
     elite = metricScr[-int(metricScr.shape[0] * 0.2):, 1:]
     new = np.random.rand(int(popSize * 0.4), metnum)
     
-    mutRatio, mutRange = 0.00, 2
+    mutRatio, mutRange = 0.03, 2
     child = np.zeros_like(new)
     for i in range(child.shape[0]):
         for j in range(child.shape[1]):
@@ -128,22 +167,8 @@ def NextGeneration(scr, pop):
     
     return np.concatenate((elite, new, child))
 
-def GetFastestPopSize(hist):
-    gc.enable()
-    metrics = GetMetrics(hist)
-    popSizes = np.arange(200, 5001, 200)
-    for popSize in popSizes:
-        t0 = time.perf_counter()
-        pop = StartMetricPopulation(metrics, popSize)
-        (cBuy, cSell) = GetConds(metrics, pop)
-        gains = GetGainsMetric(hist, cBuy, cSell)
-        pop = NextGeneration(gains, pop)
-        t1 = time.perf_counter()
-        print(f"popSize = {popSize}, t / popSize = {np.round((t1 - t0) / popSize, 3)}")
-
 def GetConds(metrics, pop):
     w, thr = pop[:, :metrics.shape[0]], pop[:, metrics.shape[0]:]
-       
     scr = np.matmul(w, metrics.swapaxes(0, 1)).swapaxes(0, 1)
     c0 = scr > thr[:, 0].reshape(thr.shape[0], 1, 1)
     c1 = scr < thr[:, 1].reshape(thr.shape[0], 1, 1)
@@ -164,7 +189,7 @@ def GetGainsMetric(hist, cBuy, cSell):
     popSize = cBuy.shape[0]
     numSym = cSell.shape[1]
     totGains = np.ones((popSize, numSym))
-    opens = np.ones((popSize, numSym))
+    opens = np.stack([hist[:, 0, 3] for _ in range(popSize)])
     handicap = 0.003
     b, c = 50, 1
     a = 1 / np.log(b + 1)
@@ -173,7 +198,7 @@ def GetGainsMetric(hist, cBuy, cSell):
         opens = cBuy[:, :, t] * stack + np.logical_not(cBuy[:, :, t]) * opens
         gains = stack / opens * (1 - handicap)
         gains = a * np.log(b * gains + c)
-        totGains *= cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t]) * np.ones((popSize, numSym))
+        totGains *= cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t])
     
     return totGains.prod(axis = 1)
 
@@ -183,7 +208,7 @@ def GetMetrics(hist):
     
     base = {"close": hist[:, :, 3], "vol": hist[:, :, 4]}
     inds = {}
-    ns = [6, 30, 120]
+    ns = [7, 35, 140]
     l = hist.shape[1] - max(ns)
     for typ in ["close", "vol"]:
         tmp0 = {}
@@ -201,10 +226,10 @@ def GetMetrics(hist):
         tmp0["1"] = {"ma": base[typ][:, hist.shape[1] - l + 1:]}
         inds[typ] = tmp0
         
-    alpha = ((1, 6), (1, 30), (1, 120), (6, 30), (6, 120), (30, 120),
-             (6, 6), (30, 30), (120, 120))
-    beta = ((1, 6), (1, 30), (1, 120), (6, 30), (6, 120), (30, 120))
-    gamma = ((1, 6), (1, 30), (1, 120), (6, 30), (6, 120), (30, 120))
+    alpha = ((1, 7), (1, 35), (1, 140), (7, 35), (7, 140), (35, 140),
+             (7, 7), (35, 35), (140, 140))
+    beta = ((1, 7), (1, 35), (1, 140), (7, 35), (7, 140), (35, 140))
+    gamma = ((1, 7), (1, 35), (1, 140), (7, 35), (7, 140), (35, 140))
     metrics = []
     
     for i in alpha:
@@ -245,7 +270,11 @@ def SaveParameterSet(pSet, name, scr, scrV):
     pSets[str(uuid.uuid4())] = pSetEntry
     with open("pSets.pickle", "wb") as f:
         pickle.dump(pSets, f, pickle.HIGHEST_PROTOCOL)
-        
+
+def GetTime():
+    
+    return datetime.datetime.now()
+
 def LoadParameterSets():
     with open("pSets.pickle", "rb") as f:
         pSets = pickle.load(f)
@@ -261,3 +290,16 @@ def LoadFile(name):
         obj = pickle.load(f)
         
     return obj
+
+def GetFastestPopSize(hist):
+    gc.enable()
+    metrics = GetMetrics(hist)
+    popSizes = np.arange(200, 5001, 200)
+    for popSize in popSizes:
+        t0 = time.perf_counter()
+        pop = StartMetricPopulation(metrics, popSize)
+        (cBuy, cSell) = GetConds(metrics, pop)
+        gains = GetGainsMetric(hist, cBuy, cSell)
+        pop = NextGeneration(gains, pop)
+        t1 = time.perf_counter()
+        print(f"popSize = {popSize}, t / popSize = {np.round((t1 - t0) / popSize, 3)}")

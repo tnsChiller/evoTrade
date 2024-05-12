@@ -6,8 +6,8 @@ from Constants import playList
 import datetime
 import warnings
 warnings.simplefilter(action = 'ignore', category = FutureWarning)
-key = 'PKKQMCMWMEYQ9S7VEBPN'
-secret = 'xRhpoy3649uxkfhuSMTNbd4SHntRgPCaogd1izCa'
+key = 'PKSK9DJ678KZ8MBXFTKO'
+secret = 'h8Phkjns4n0DRdLmOAQEi1syFzNZh0ZLxgK7nuYL'
 client = TradingClient(key, secret, paper=True)
 
 def RunPositionSummary():
@@ -32,9 +32,9 @@ def GetAccountInfo():
     
     return(eqt, pos)
 
-def ExecuteOrders(orderList, keys):
+def ExecuteOrders(orderList, playList):
     cumOrders = {}
-    for sym in keys:
+    for sym in playList:
         cumOrders[sym] = 0
     
     for order in orderList:

@@ -1,5 +1,6 @@
 import Externals as extt
 import Utilities as util
+from Constants import playList
 pSets = util.LoadFile("pSets")
 
 print("\nStarting ...")
@@ -11,10 +12,10 @@ while True:
         # if True:
             if go:
                 yfd = extt.GetYFD()
-                (metrics, keys) = util.GetLiveMetrics(yfd)
-                moves = util.GetMoves(pSets, metrics, keys)
+                metrics = util.GetLiveMetrics(yfd)
+                moves = util.GetMoves(pSets, metrics, playList)
                 orderList = util.CreateOrderList(moves, yfd, pSets)
-                extt.ExecuteOrders(orderList, keys)
+                extt.ExecuteOrders(orderList, playList)
                 go = False
                 
         else:
