@@ -4,7 +4,7 @@ import Ext
 loadPop = True
 hist = Ext.GetHist()
 metrics = util.GetMetrics(hist)
-popSize,  gens = 1000, 1000
+popSize,  gens = 1000, 2000
 if loadPop:
     pop = util.LoadFile("lastPop")
     
