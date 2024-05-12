@@ -146,6 +146,7 @@ def EvolvePopulation(hist, gens, pop):
         if gen != gens:
             pop = NextGeneration(gains, pop)
         print(f"Gen = {gen}, mean scr = {round(gains[:int(pop.shape[0] * 0.4)].mean(),4)}")
+        SaveFile([pop, gains], "lastPop")
     
     return (pop, gains)
 

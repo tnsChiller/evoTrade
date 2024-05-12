@@ -1,10 +1,16 @@
 import Utilities as util
 import Ext
 
+loadPop = True
 hist = Ext.GetHist()
 metrics = util.GetMetrics(hist)
 popSize,  gens = 1000, 1000
-pop = util.StartMetricPopulation(metrics, popSize)
+if loadPop:
+    pop = util.LoadFile("lastPop")
+    
+else:
+    pop = util.StartMetricPopulation(metrics, popSize)
+    
 (pop, gains) = util.EvolvePopulation(hist, gens, pop)
 
 modelsToAdd = 10
