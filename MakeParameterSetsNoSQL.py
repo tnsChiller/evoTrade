@@ -3,24 +3,20 @@ import Utilities as util
 import pickle
 
 with open("lastHist.pickle", "rb") as f:
-    hist0 = pickle.load(f)
+    hist = pickle.load(f)
     
-vSplit = 0.2
-hist = hist0[:, :int(hist0.shape[1] * (1 - vSplit)), :]
-histV = hist0[:, int(hist0.shape[1] * (1 - vSplit)):, :]
+loadPop = True
 metrics = util.GetMetrics(hist)
-popSize,  gens = 1200, 300
-pop = util.StartMetricPopulation(metrics, popSize)
+popSize,  gens = 1000, 2000
+if loadPop:
+    [pop, gains] = util.LoadFile("lastPop")
+    
+else:
+    pop = util.StartMetricPopulation(metrics, popSize)
+    
 (pop, gains) = util.EvolvePopulation(hist, gens, pop)
-(pop, gainsV) = util.EvolvePopulation(histV, 0, pop)
 
-res = np.concatenate((gainsV.reshape(popSize, 1),
-                      gains.reshape(popSize, 1),
-                      pop), axis = 1)
-res = res[res[:, 0].argsort()]
-
-selection = []
-for idx in range(popSize - 20, popSize):
-    if res[idx, 1] > 2 and res[idx, 0] > 2:
-        selection.append([res[idx, 1], res[idx, 0], res[idx, 2:]])
-        util.SaveParameterSet(res[idx, 2:], "-", res[idx, 1], res[idx, 0])
+modelsToAdd = 10
+splitIdx = int(popSize * 0.2)
+for i in range(splitIdx - modelsToAdd, splitIdx):
+    util.SaveParameterSet(pop[i], "-", gains[i], -1)
