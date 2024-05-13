@@ -13,10 +13,10 @@ if loadPop:
     
 else:
     pop = util.StartMetricPopulation(metrics, popSize)
-    
+     
 (pop, gains) = util.EvolvePopulation(hist, gens, pop)
 
-modelsToAdd = 10
+modelsToAdd = 5
 splitIdx = int(popSize * 0.2)
 for i in range(splitIdx - modelsToAdd, splitIdx):
     util.SaveParameterSet(pop[i], "-", gains[i], -1)
