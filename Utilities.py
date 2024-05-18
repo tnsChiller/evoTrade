@@ -138,6 +138,18 @@ def EvolveInPieces(hist, gens, pop, pieceSize):
             pop = NextGeneration(gains, pop)
         print(f"Gen = {gen}, mean scr = {round(gains[:int(pop.shape[0] * 0.4)].mean(),4)}")
 
+def EvolveSymbolPopulation(hist, gens, pop):
+    metrics = GetMetrics(hist)
+    for gen in range(gens + 1):
+        (cBuy, cSell) = GetSymbolConds(metrics, pop)
+        gains = GetGainsMetric(hist, cBuy, cSell)
+        if gen != gens:
+            pop = NextSymbolGeneration(gains, pop)
+        print(f"Gen = {gen}, mean scr = {round(gains[:int(pop.shape[0] * 0.4)].mean(),4)}")
+        SaveFile([pop, gains], "lastPop")
+    
+    return (pop, gains)
+
 def EvolvePopulation(hist, gens, pop):
     metrics = GetMetrics(hist)
     for gen in range(gens + 1):
@@ -150,6 +162,28 @@ def EvolvePopulation(hist, gens, pop):
     
     return (pop, gains)
 
+def NextSymbolGeneration(scr, pop):
+    popSize = pop.shape[0]
+    scrSort = scr[scr.argsort()]
+    elite = []
+    for i in range(1, int(popSize * 0.2) + 1):
+        idx = np.where(scr == scrSort[-i])[0][0]
+        elite.append(pop[idx])
+        
+    elite = np.stack(elite)
+    new = StartSymbolPopulation(pop.shape[2] - 2, int(popSize * 0.4))
+    
+    mutRatio, mutRange = 0.05, 5
+    child = np.zeros_like(new)
+    for i in range(child.shape[0]):
+        for j in range(child.shape[1]):
+            for k in range(child.shape[2]):
+                child[i, j, k] = elite[np.random.randint(0, elite.shape[0]), j, k]
+                if np.random.rand() < mutRatio:
+                    child[i, j, k] *= (np.random.rand() - 0.5) * mutRange
+    
+    return np.concatenate((elite, new, child))
+
 def NextGeneration(scr, pop):
     popSize, metnum = pop.shape[0], pop.shape[1]
     metricScr = np.concatenate((scr.reshape((len(scr),1)), pop), axis = 1)
@@ -157,13 +191,13 @@ def NextGeneration(scr, pop):
     elite = metricScr[-int(metricScr.shape[0] * 0.2):, 1:]
     new = np.random.rand(int(popSize * 0.4), metnum)
     
-    mutRatio, mutRange = 0.03, 2
+    mutRatio, mutRange = 0.05, 5
     child = np.zeros_like(new)
     for i in range(child.shape[0]):
         for j in range(child.shape[1]):
             gene = elite[np.random.randint(0, elite.shape[0]), j]
             if np.random.rand() < mutRatio:
-                gene *= np.random.rand() * mutRange
+                gene *= (np.random.rand() - 0.5) * mutRange
             child[i, j] = gene
     
     return np.concatenate((elite, new, child))
@@ -171,8 +205,29 @@ def NextGeneration(scr, pop):
 def GetConds(metrics, pop):
     w, thr = pop[:, :metrics.shape[0]], pop[:, metrics.shape[0]:]
     scr = np.matmul(w, metrics.swapaxes(0, 1)).swapaxes(0, 1)
+    
     c0 = scr > thr[:, 0].reshape(thr.shape[0], 1, 1)
     c1 = scr < thr[:, 1].reshape(thr.shape[0], 1, 1)
+    cBuy = np.logical_and(c0[:, :, 1:], np.logical_not(c0[:, :, :-1]))
+    cSell = np.logical_and(c1[:, :, 1:], np.logical_not(c1[:, :, :-1]))
+    
+    buyLast = np.zeros((cBuy.shape[0], cBuy.shape[1]), bool)
+    for t in range(cSell.shape[2]):
+        cBuy[:, :, t] = np.logical_not(buyLast) * cBuy[:, :, t]
+        cSell[:, :, t] = buyLast * cSell[:, :, t]
+        
+        buyLast = cBuy[:, :, t] + np.logical_not(cBuy[:, :, t]) * buyLast
+        buyLast = np.logical_not(cSell[:, :, t]) * buyLast
+        
+    return (cBuy, cSell)
+
+def GetSymbolConds(metrics, pop):
+    w, thr = pop[:, :, :metrics.shape[0]], pop[:, :, metrics.shape[0]:]
+    # D, M, N, R = metrics.shape[2], w.shape[0], w.shape[1], w.shape[2]
+    scr = np.einsum('mnr, rnd -> mnd', w, metrics)
+    
+    c0 = scr > thr[:, :, 0].reshape(thr.shape[0], thr.shape[1], 1)
+    c1 = scr < thr[:, :, 1].reshape(thr.shape[0], thr.shape[1], 1)
     cBuy = np.logical_and(c0[:, :, 1:], np.logical_not(c0[:, :, :-1]))
     cSell = np.logical_and(c1[:, :, 1:], np.logical_not(c1[:, :, :-1]))
     
@@ -195,10 +250,12 @@ def GetGainsMetric(hist, cBuy, cSell):
     b, c = 50, 1
     a = 1 / np.log(b + 1)
     for t in range(cSell.shape[2]):
+        w = 0.8 + 0.4 * t / cSell.shape[2]
         stack = np.stack([hist[:, t, 3] for _ in range(popSize)])
         opens = cBuy[:, :, t] * stack + np.logical_not(cBuy[:, :, t]) * opens
         gains = stack / opens * (1 - handicap)
         gains = a * np.log(b * gains + c)
+        gains = (gains - 1) * w + 1
         totGains *= cSell[:, :, t] * gains + np.logical_not(cSell[:, :, t])
     
     return totGains.prod(axis = 1)
@@ -248,12 +305,17 @@ def GetMetrics(hist):
         
     return np.array(metrics)
 
+def StartSymbolPopulation(metNum, size):
+    popList = [(np.random.rand(len(playList), metNum + 2) - 0.5) * 4 for _ in range(size)]
+
+    return np.array(popList, np.float32)
+
 def StartMetricPopulation(metrics, size):
     popList = [(np.random.rand(metrics.shape[0] + 2) - 0.5) * 4 for _ in range(size)]
     
     return np.array(popList, np.float32)
 
-def SaveParameterSet(pSet, name, scr, scrV):
+def SaveParameterSet(pSet, name, scr, scrV, typ):
     status = {}
     for sym in playList:
         status[sym] = False
@@ -265,7 +327,7 @@ def SaveParameterSet(pSet, name, scr, scrV):
                  "scrV": scrV,
                  "status": status,
                  "active": True,
-                 "type": "evo_mkI",
+                 "type": typ,
                  "pSet": pSet,
                  "date": datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S")}
     pSets[str(uuid.uuid4())] = pSetEntry

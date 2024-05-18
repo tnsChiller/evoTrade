@@ -19,4 +19,4 @@ else:
 modelsToAdd = 5
 splitIdx = int(popSize * 0.2)
 for i in range(splitIdx - modelsToAdd, splitIdx):
-    util.SaveParameterSet(pop[i], "-", gains[i], -1)
+    util.SaveParameterSet(pop[i], "-", gains[i], -1, "evo_mkI")

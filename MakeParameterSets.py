@@ -22,4 +22,4 @@ selection = []
 for idx in range(popSize - 20, popSize):
     if res[idx, 1] > 2 and res[idx, 0] > 2:
         selection.append([res[idx, 1], res[idx, 0], res[idx, 2:]])
-        util.SaveParameterSet(res[idx, 2:], "-", res[idx, 1], res[idx, 0])
+        util.SaveParameterSet(res[idx, 2:], "-", res[idx, 1], res[idx, 0], "evo_mkI")
