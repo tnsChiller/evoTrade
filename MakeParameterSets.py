@@ -3,12 +3,12 @@ import Utilities as util
 import Ext
 
 hist0 = Ext.GetHist()
-vSplit = 0.2
+vSplit = 0.1
 hist = hist0[:, :int(hist0.shape[1] * (1 - vSplit)), :]
 histV = hist0[:, int(hist0.shape[1] * (1 - vSplit)):, :]
 metrics = util.GetMetrics(hist)
 # popSize, pieceSize, gens = 5000, 200, 100
-popSize,  gens = 1000, 300
+popSize,  gens = 1000, 3000
 pop = util.StartMetricPopulation(metrics, popSize)
 (pop, gains) = util.EvolvePopulation(hist, gens, pop)
 (pop, gainsV) = util.EvolvePopulation(histV, 0, pop)
@@ -22,4 +22,4 @@ selection = []
 for idx in range(popSize - 20, popSize):
     if res[idx, 1] > 2 and res[idx, 0] > 2:
         selection.append([res[idx, 1], res[idx, 0], res[idx, 2:]])
-        util.SaveParameterSet(res[idx, 2:], "-", res[idx, 1], res[idx, 0], "evo_mkI")
+        util.SaveParameterSet(res[idx, 2:], "-", res[idx, 1], res[idx, 0], "evo_mkI10d")

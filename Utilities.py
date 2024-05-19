@@ -246,7 +246,7 @@ def GetGainsMetric(hist, cBuy, cSell):
     numSym = cSell.shape[1]
     totGains = np.ones((popSize, numSym))
     opens = np.stack([hist[:, 0, 3] for _ in range(popSize)])
-    handicap = 0.003
+    handicap = 0.01
     b, c = 50, 1
     a = 1 / np.log(b + 1)
     for t in range(cSell.shape[2]):
