@@ -40,11 +40,11 @@ def GetMoves(pSets, metrics, verbose = True):
     for pSet in pSets:
         if pSets[pSet]["active"]:
             pop = np.array([pSets[pSet]["pSet"]])
-            if pSets[pSet]["type"] == "evo_mkI":
-                (cBuy, cSell) = GetConds(metrics, pop)
-                
-            elif pSets[pSet]["type"] == "evo_mkII":
+            if pSets[pSet]["type"] == "evo_mkII":
                 (cBuy, cSell) = GetSymbolConds(metrics, pop)
+                
+            else:
+                (cBuy, cSell) = GetConds(metrics, pop)
             moves[pSet] = {}
             for i in range(len(playList)):
                 if (cBuy[0, i, -1] or cSell[0, i, -1]) and verbose:
